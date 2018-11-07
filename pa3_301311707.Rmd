@@ -1,0 +1,100 @@
+---
+title: Programming Assignment 3 
+author: <Branton Li - 301311707> 
+output: 
+  html_document:
+    mathjax: default 
+---
+
+```{r include=FALSE} 
+#libraries are loaded here
+library("randomForest")
+library("pROC")
+library("caret")
+library("e1071")
+library("plyr")
+library("dplyr")
+```
+
+
+```{r}
+#preprocessing
+titanic <- read.csv(file="titanic3.csv")
+titanic <- titanic[-1310,]
+train_size <- floor(0.8*nrow(titanic))
+set.seed(1)
+tmp <- sample(1:nrow(titanic), size=train_size)
+t.train <- titanic[tmp,]
+t.test <- titanic[-tmp,]
+
+t.train[t.train==""]<-NA
+t.test[t.test==""]<-NA
+
+preprocess <- function(name_frame){
+  mean_age <- mean(name_frame[,5], na.rm=TRUE)
+  mean_fare <- mean(name_frame[,9], na.rm=TRUE)
+  name_frame$embarked[is.na(name_frame[,11])] <- "S"
+  name_frame$age[is.na(name_frame[,5])] <- mean_age
+  name_frame$fare[is.na(name_frame[,9])] <- mean_fare
+  name_frame<- name_frame[,-c(3,8,10,12:14)]
+
+  return(name_frame)
+}
+
+t.train <- preprocess(t.train)
+t.test <- preprocess(t.test)
+```
+
+## Task 1 
+```{r} 
+#your code for task 1 comes here 
+train.rf <- randomForest(survived ~., data = t.train, ntree=100, importance=TRUE)
+
+survived.pred <- predict(train.rf, t.test)
+table_pred <- table(t.test$survived, survived.pred)
+accuracy <- sum(diag(table_pred)) / sum(table_pred)
+print(accuracy)
+print(train.rf)
+
+plot.roc(t.test$survived, survived.pred)
+train.auc <- auc(t.test$survived, survived.pred)
+print(train.auc)
+``` 
+
+
+
+## Task 2 
+```{r} 
+#your code for task 2 comes here 
+importance(train.rf, type = 1)
+
+varImpPlot(train.rf, type = 1)
+```
+
+
+## Task 3 
+```{r} 
+#your code for task 3 comes here 
+logistic <- train(t.train, t.train$survived, method="glmnet")
+```
+
+
+## Task 4 
+```{r} 
+#your code for task 4 comes here 
+
+```
+
+
+## Task 5 
+```{r} 
+#your code for task 5 comes here 
+
+```
+
+
+## Task 6 
+```{r} 
+#your code for task 6 comes here 
+
+```
