@@ -37,7 +37,6 @@ preprocess <- function(name_frame){
   name_frame$age[is.na(name_frame[,5])] <- mean_age
   name_frame$fare[is.na(name_frame[,9])] <- mean_fare
   name_frame<- name_frame[,-c(3,8,10,12:14)]
-
   return(name_frame)
 }
 
@@ -51,7 +50,8 @@ t.test <- preprocess(t.test)
 train.rf <- randomForest(survived ~., data = t.train, ntree=100, importance=TRUE)
 
 survived.pred <- predict(train.rf, t.test)
-table_pred <- table(t.test$survived, survived.pred)
+round.rfpred <- round(survived.pred, digit=0)
+table_pred <- table(t.test$survived, round.rfpred)
 accuracy <- sum(diag(table_pred)) / sum(table_pred)
 print(accuracy)
 print(train.rf)
@@ -75,21 +75,29 @@ varImpPlot(train.rf, type = 1)
 ## Task 3 
 ```{r} 
 #your code for task 3 comes here 
-logistic <- train(t.train, t.train$survived, method="glmnet")
+logistic <- train(survived~., t.train, method="glmnet")
 ```
 
 
 ## Task 4 
 ```{r} 
 #your code for task 4 comes here 
+log.pred <- predict(logistic, t.test)
+round.log <- round(log.pred, digit=0)
+log.table <- table(t.test$survived, round.log)
+confusionMatrix(log.table)
 
+plot.roc(t.test$survived, log.pred)
+train.auc <- auc(t.test$survived, log.pred)
+print(train.auc)
 ```
 
 
 ## Task 5 
 ```{r} 
 #your code for task 5 comes here 
-
+linear.svm <- svm(survived~., t.train, kernel="linear")
+radial.svm<- svm(survived~., t.train, kernel="radial")
 ```
 
 
