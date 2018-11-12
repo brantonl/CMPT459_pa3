@@ -37,6 +37,10 @@ preprocess <- function(name_frame){
   name_frame$age[is.na(name_frame[,5])] <- mean_age
   name_frame$fare[is.na(name_frame[,9])] <- mean_fare
   name_frame<- name_frame[,-c(3,8,10,12:14)]
+  name_frame<- mutate(name_frame,
+    pclass = factor(pclass, levels = c(1,2,3), labels = c("Top", "Middle", "Basic")),
+    survived = factor(survived, levels = c(0,1), labels = c(FALSE, TRUE))
+  )
   return(name_frame)
 }
 
@@ -49,15 +53,17 @@ t.test <- preprocess(t.test)
 #your code for task 1 comes here 
 train.rf <- randomForest(survived ~., data = t.train, ntree=100, importance=TRUE)
 
-survived.pred <- predict(train.rf, t.test)
-round.rfpred <- round(survived.pred, digit=0)
-table_pred <- table(t.test$survived, round.rfpred)
+print("accuracy of the random Forest")
+rf.class.pred <- predict(train.rf, t.test, type = "class")
+table_pred <- table(rf.class.pred, t.test$survived)
 accuracy <- sum(diag(table_pred)) / sum(table_pred)
 print(accuracy)
 print(train.rf)
 
-plot.roc(t.test$survived, survived.pred)
-train.auc <- auc(t.test$survived, survived.pred)
+rf.prob.pred <- predict(train.rf, t.test, type = "prob")
+plot.roc(t.test$survived, (rf.prob.pred[,1]))
+train.auc <- auc(t.test$survived, (rf.prob.pred[,1]))
+print("AUC of the ROC curve")
 print(train.auc)
 ``` 
 
@@ -82,13 +88,16 @@ logistic <- train(survived~., t.train, method="glmnet")
 ## Task 4 
 ```{r} 
 #your code for task 4 comes here 
-log.pred <- predict(logistic, t.test)
-round.log <- round(log.pred, digit=0)
-log.table <- table(t.test$survived, round.log)
-confusionMatrix(log.table)
+log.class.pred <- predict(logistic, t.test)
+log.table <- table(t.test$survived, log.class.pred)
+log.accuracy <- sum(diag(log.table)) / sum(log.table)
+print("accuracy of logistic regression model")
+print(log.accuracy)
 
-plot.roc(t.test$survived, log.pred)
-train.auc <- auc(t.test$survived, log.pred)
+log.prob.pred <- predict(logistic, t.test, type = "prob")
+plot.roc(t.test$survived, (log.prob.pred[,1]))
+train.auc <- auc(t.test$survived, (log.prob.pred[,1]))
+print("AUC of the ROC curve of logistic regression model")
 print(train.auc)
 ```
 
@@ -98,11 +107,29 @@ print(train.auc)
 #your code for task 5 comes here 
 linear.svm <- svm(survived~., t.train, kernel="linear")
 radial.svm<- svm(survived~., t.train, kernel="radial")
+
+tuned.linear <- tune.svm(survived ~., data = t.train, cost=10^(-1:2), kernel="linear")
+tuned.radial <- tune.svm(survived ~., data = t.train, gamma=c(.5,1,2), kernel="radial")
+
+print(tuned.linear)
+
+print(tuned.radial)
 ```
 
 
 ## Task 6 
 ```{r} 
 #your code for task 6 comes here 
+tuned.svm <- svm(survived ~ ., data=t.train, kernel="radial", cost=0.1, gamma=0.5)
+svm.pred <- predict(tuned.svm, t.test)
+svm.table <- table(t.test$survived, svm.pred)
+svm.accuracy <- sum(diag(svm.table)) / sum(svm.table)
+print("accuracy of svm model")
+print(svm.accuracy)
 
+svm.prob.pred <- predict(tuned.svm, t.test, type = "prob")
+plot.roc(t.test$survived, svm.prob.pred)
+train.auc <- auc(t.test$survived, svm.prob.pred)
+print("AUC of the ROC curve of tuned svm model")
+print(train.auc)
 ```
