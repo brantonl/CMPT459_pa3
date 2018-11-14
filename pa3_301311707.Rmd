@@ -14,6 +14,7 @@ library("caret")
 library("e1071")
 library("plyr")
 library("dplyr")
+library("forecast")
 ```
 
 
@@ -53,10 +54,11 @@ t.test <- preprocess(t.test)
 #your code for task 1 comes here 
 train.rf <- randomForest(survived ~., data = t.train, ntree=100, importance=TRUE)
 
-print("accuracy of the random Forest")
+
 rf.class.pred <- predict(train.rf, t.test, type = "class")
 table_pred <- table(rf.class.pred, t.test$survived)
 accuracy <- sum(diag(table_pred)) / sum(table_pred)
+print("accuracy of the random Forest")
 print(accuracy)
 print(train.rf)
 
@@ -66,7 +68,7 @@ train.auc <- auc(t.test$survived, (rf.prob.pred[,1]))
 print("AUC of the ROC curve")
 print(train.auc)
 ``` 
-
+The performance of the best random forest model is worse than the best decision tree from PA2 where the accuracy for the best decision tree is around 0.82.
 
 
 ## Task 2 
@@ -76,13 +78,24 @@ importance(train.rf, type = 1)
 
 varImpPlot(train.rf, type = 1)
 ```
+The top three most important attributes in decreasing order are sex, pclass and fare.
+
+For sex, it is important for classification as female tends to have a higher chance to be survival than male as it is a general rule to put the females to safety first when there is danger. 
+
+For pclass, it is important for classification as passengers of higher pclass may have a possible chance to live close to the escape boats thus easier to get to safety and survive.
+
+For fare, it is important for classification as passengers who pay higher fare may have a higher chance to be of higher pclass thus higher chance to survive. 
+
 
 
 ## Task 3 
 ```{r} 
 #your code for task 3 comes here 
-logistic <- train(survived~., t.train, method="glmnet")
+logistic <- train(survived~., t.train, method="glmnet", family="binomial")
+varImp(logistic)
 ```
+The most significant three attributes of the model are pclass, sex and embarked.
+
 
 
 ## Task 4 
@@ -115,21 +128,23 @@ print(tuned.linear)
 
 print(tuned.radial)
 ```
+since the best parameters for cost and gamma is the smallest value in the given range, we can deduce that the data is spaced far apart such that the margin in between the two groups is very large.
 
 
 ## Task 6 
 ```{r} 
 #your code for task 6 comes here 
-tuned.svm <- svm(survived ~ ., data=t.train, kernel="radial", cost=0.1, gamma=0.5)
+tuned.svm <- svm(survived ~ ., data=t.train, kernel="radial", cost=0.1, gamma=0.5, probability = TRUE)
 svm.pred <- predict(tuned.svm, t.test)
 svm.table <- table(t.test$survived, svm.pred)
 svm.accuracy <- sum(diag(svm.table)) / sum(svm.table)
 print("accuracy of svm model")
 print(svm.accuracy)
 
-svm.prob.pred <- predict(tuned.svm, t.test, type = "prob")
-plot.roc(t.test$survived, svm.prob.pred)
-train.auc <- auc(t.test$survived, svm.prob.pred)
+svm.prob.pred <- predict(tuned.svm, t.test, probability = TRUE)
+
+plot.roc(t.test$survived, attr(svm.prob.pred, "probabilities")[,1])
+train.auc <- auc(t.test$survived, attr(svm.prob.pred, "probabilities")[,1])
 print("AUC of the ROC curve of tuned svm model")
 print(train.auc)
 ```
