@@ -1,0 +1,133 @@
+---
+title: Programming Assignment 3 
+author: <Branton Li - 301311707> 
+output: 
+  html_document:
+    mathjax: default 
+---
+
+```{r include=FALSE} 
+#libraries are loaded here
+library("randomForest")
+library("pROC")
+library("caret")
+library("e1071")
+```
+
+
+```{r}
+#preprocessing
+t.train <- read.csv(file="Titanic.Train.csv")
+t.test <- read.csv(file="Titanic.Test.csv")
+```
+
+## Task 1 
+```{r} 
+#your code for task 1 comes here 
+train.rf <- randomForest(as.factor(survived) ~., data = t.train, ntree=100, importance=TRUE)
+
+rf.class.pred <- predict(train.rf, t.test, type = "class")
+
+table_pred <- table(rf.class.pred, t.test$survived)
+accuracy <- sum(diag(table_pred)) / sum(table_pred)
+print("accuracy of the random Forest")
+print(accuracy)
+
+rf.prob.pred <- predict(train.rf, t.test, type="prob")
+plot.roc(t.test$survived, (rf.prob.pred[,1]))
+train.auc <- auc(t.test$survived, (rf.prob.pred[,1]))
+print("AUC of the ROC curve")
+print(train.auc)
+``` 
+The performance of the best random forest model is better than the best decision tree from PA2 where the accuracy for the best decision tree is around 0.82.
+
+
+## Task 2 
+```{r} 
+#your code for task 2 comes here 
+importance(train.rf, type = 1)
+
+varImpPlot(train.rf, type = 1)
+```
+The top three most important attributes in decreasing order are sex, age and pclass.
+
+For the above 3 attributes, they should have the lowest gini index as they are the top three most important attributes as predictors. When performing the classification task, these three attributes will be the first three that will be used to split records for classification prediction.
+
+
+
+## Task 3 
+```{r} 
+#your code for task 3 comes here 
+logistic <- train(as.factor(survived)~., t.train, method="glmnet", family="binomial")
+varImp(logistic)
+```
+The most significant three attributes of the model are sex, pclass and sibsp.
+
+
+
+## Task 4 
+```{r} 
+#your code for task 4 comes here 
+log.class.pred <- predict(logistic, t.test)
+log.table <- table(t.test$survived, log.class.pred)
+print("confusion matraix")
+plot(log.table)
+log.accuracy <- sum(diag(log.table)) / sum(log.table)
+print("accuracy of logistic regression model")
+print(log.accuracy)
+
+log.prob.pred <- predict(logistic, t.test, type = "prob")
+plot.roc(t.test$survived, (log.prob.pred[,1]))
+train.auc <- auc(t.test$survived, (log.prob.pred[,1]))
+print("AUC of the ROC curve of logistic regression model")
+print(train.auc)
+```
+
+
+## Task 5 
+```{r} 
+#your code for task 5 comes here 
+tuned.linear <- tune.svm(as.factor(survived) ~., data = t.train, cost=10^(-2:2), kernel="linear")
+tuned.radial <- tune.svm(as.factor(survived) ~., data = t.train, gamma=10^(-2:2), kernel="radial")
+
+tuned.linear$best.model
+tuned.radial$best.model
+```
+since the best parameters for cost is the smallest value in the given range, we can deduce that the groups of data are spaced far apart such that the margin in between the two groups is very large. The lowest cost that we feed in the formula is used to penalize the possible overfitting of data in our model.
+
+Although the best parameters for gamma is not the smallest value in the given range, but the used values acts as the penalizer for overfitting data in model. 
+
+
+## Task 6 
+```{r} 
+#your code for task 6 comes here 
+linear.svm <- svm(as.factor(survived)~., t.train, kernel="linear", cost=tuned.linear$best.parameters, gamma=0.083,probability = TRUE)
+
+radial.svm<- svm(as.factor(survived)~., t.train, kernel="radial", cost=1, gamma=tuned.radial$best.parameters, probability = TRUE)
+
+linear.pred <- predict(linear.svm, t.test)
+linear.table <- table(t.test$survived, linear.pred)
+linear.accuracy <- sum(diag(linear.table)) / sum(linear.table)
+print("accuracy of linear svm with best parameters")
+print(linear.accuracy)
+
+rad.pred <- predict(radial.svm, t.test)
+rad.table <- table(t.test$survived, rad.pred)
+rad.accuracy <- sum(diag(rad.table)) / sum(rad.table)
+print("accuracy of radial svm with best parameters")
+print(rad.accuracy)
+
+linear.prob.pred <- predict(linear.svm, t.test, probability = TRUE)
+
+plot.roc(t.test$survived, attr(linear.prob.pred, "probabilities")[,1])
+linear.auc <- auc(t.test$survived, attr(linear.prob.pred, "probabilities")[,1])
+print("AUC of the ROC curve of linear svm with best parameters")
+print(linear.auc)
+
+svm.prob.pred <- predict(radial.svm, t.test, probability = TRUE)
+
+plot.roc(t.test$survived, attr(svm.prob.pred, "probabilities")[,1])
+train.auc <- auc(t.test$survived, attr(svm.prob.pred, "probabilities")[,1])
+print("AUC of the ROC curve of radial svm with best parameters")
+print(train.auc)
+```
